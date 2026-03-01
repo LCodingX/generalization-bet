@@ -39,9 +39,15 @@ async function request<T>(
 
   if (!res.ok) {
     const payload = await res.json().catch(() => ({}));
-    throw new Error(
-      payload.detail || `API error: ${res.status}`
-    );
+    let message = `API error: ${res.status}`;
+    if (typeof payload.detail === "string") {
+      message = payload.detail;
+    } else if (Array.isArray(payload.detail)) {
+      message = payload.detail
+        .map((e: { msg?: string }) => e.msg ?? JSON.stringify(e))
+        .join("; ");
+    }
+    throw new Error(message);
   }
 
   return res.json() as Promise<T>;
