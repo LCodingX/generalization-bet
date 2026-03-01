@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Plus, Database, Calendar } from "lucide-react";
@@ -19,6 +20,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { getCategoryColor } from "@/lib/colors";
+import { useDatasets } from "@/lib/hooks/use-datasets";
 import type { Dataset } from "@/lib/types";
 
 
@@ -43,21 +45,17 @@ function formatDate(iso: string): string {
 // ---------------------------------------------------------------------------
 
 export default function DatasetsPage() {
-  const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const { datasets, addDataset } = useDatasets();
+  const router = useRouter();
   const [newName, setNewName] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
 
   function handleCreate() {
     if (!newName.trim()) return;
-    const ds: Dataset = {
-      id: `ds-${Date.now()}`,
-      name: newName.trim(),
-      examples: [],
-      created_at: new Date().toISOString(),
-    };
-    setDatasets((prev) => [ds, ...prev]);
+    const ds = addDataset(newName.trim());
     setNewName("");
     setDialogOpen(false);
+    router.push(`/datasets/${ds.id}`);
   }
 
   return (

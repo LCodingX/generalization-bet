@@ -1,106 +1,62 @@
-import type {
-  CreateJobRequest,
-  Job,
-  JobCreatedResponse,
-  ScoresResponse,
-  UploadUrlResponse,
-} from "./types";
+import { createClient } from "@/lib/supabase";
+
+// ---------------------------------------------------------------------------
+// Authenticated API client
+// ---------------------------------------------------------------------------
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-async function apiFetch<T>(
-  path: string,
-  options: RequestInit & { token?: string } = {}
-): Promise<T> {
-  const { token, ...fetchOptions } = options;
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(fetchOptions.headers as Record<string, string>),
-  };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+async function getToken(): Promise<string> {
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.access_token) {
+    throw new Error("Not authenticated");
   }
 
+  return session.access_token;
+}
+
+async function request<T>(
+  method: string,
+  path: string,
+  body?: unknown
+): Promise<T> {
+  const token = await getToken();
+
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+
   const res = await fetch(`${API_BASE}${path}`, {
-    ...fetchOptions,
+    method,
     headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || `API error: ${res.status}`);
+    const payload = await res.json().catch(() => ({}));
+    throw new Error(
+      payload.detail || `API error: ${res.status}`
+    );
   }
 
-  return res.json();
+  return res.json() as Promise<T>;
 }
 
-// ============================================================
-// Jobs
-// ============================================================
+export const api = {
+  get<T>(path: string): Promise<T> {
+    return request<T>("GET", path);
+  },
 
-export async function createJob(
-  token: string,
-  body: CreateJobRequest
-): Promise<JobCreatedResponse> {
-  return apiFetch("/api/v1/jobs", {
-    method: "POST",
-    body: JSON.stringify(body),
-    token,
-  });
-}
+  post<T>(path: string, body?: unknown): Promise<T> {
+    return request<T>("POST", path, body);
+  },
 
-export async function listJobs(
-  token: string,
-  status?: string
-): Promise<Job[]> {
-  const params = status ? `?status=${status}` : "";
-  return apiFetch(`/api/v1/jobs${params}`, { token });
-}
-
-export async function getJob(token: string, jobId: string): Promise<Job> {
-  return apiFetch(`/api/v1/jobs/${jobId}`, { token });
-}
-
-export async function getScores(
-  token: string,
-  jobId: string,
-  params?: {
-    category?: string;
-    sort_by?: string;
-    order?: string;
-    limit?: number;
-    offset?: number;
-  }
-): Promise<ScoresResponse> {
-  const searchParams = new URLSearchParams();
-  if (params) {
-    Object.entries(params).forEach(([key, val]) => {
-      if (val !== undefined) searchParams.set(key, String(val));
-    });
-  }
-  const qs = searchParams.toString();
-  return apiFetch(`/api/v1/jobs/${jobId}/scores${qs ? `?${qs}` : ""}`, {
-    token,
-  });
-}
-
-export async function deleteJob(
-  token: string,
-  jobId: string
-): Promise<{ message: string }> {
-  return apiFetch(`/api/v1/jobs/${jobId}`, { method: "DELETE", token });
-}
-
-// ============================================================
-// Datasets
-// ============================================================
-
-export async function getUploadUrl(
-  token: string,
-  filename: string
-): Promise<UploadUrlResponse> {
-  return apiFetch(`/api/v1/datasets/upload-url?filename=${encodeURIComponent(filename)}`, {
-    method: "POST",
-    token,
-  });
-}
+  del<T>(path: string): Promise<T> {
+    return request<T>("DELETE", path);
+  },
+};

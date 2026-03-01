@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Plus, ClipboardList, Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +18,7 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import type { EvalSet } from "@/lib/types";
+import { useEvalSets } from "@/lib/hooks/use-eval-sets";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -36,21 +37,17 @@ function formatDate(iso: string): string {
 // ---------------------------------------------------------------------------
 
 export default function EvalsPage() {
-  const [evalSets, setEvalSets] = useState<EvalSet[]>([]);
+  const { evalSets, addEvalSet } = useEvalSets();
+  const router = useRouter();
   const [newName, setNewName] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
 
   function handleCreate() {
     if (!newName.trim()) return;
-    const es: EvalSet = {
-      id: `ev-${Date.now()}`,
-      name: newName.trim(),
-      examples: [],
-      created_at: new Date().toISOString(),
-    };
-    setEvalSets((prev) => [es, ...prev]);
+    const es = addEvalSet(newName.trim());
     setNewName("");
     setDialogOpen(false);
+    router.push(`/evals/${es.id}`);
   }
 
   return (

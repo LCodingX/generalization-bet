@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { useEvalSets } from "@/lib/hooks/use-eval-sets";
 import type { EvalExample } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
@@ -17,10 +18,41 @@ import type { EvalExample } from "@/lib/types";
 export default function EvalSetDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { evalSets, updateEvalSet } = useEvalSets();
 
-  const evalSetName = `Eval Set ${params.id}`;
+  const evalSet = evalSets.find((es) => es.id === params.id);
 
-  const [examples, setExamples] = useState<EvalExample[]>([]);
+  const [examples, setExamples] = useState<EvalExample[]>(
+    evalSet?.examples ?? []
+  );
+  const initialLoadRef = useRef(true);
+
+  // Sync local state when the eval set loads or changes externally
+  useEffect(() => {
+    if (evalSet) {
+      setExamples(evalSet.examples);
+      initialLoadRef.current = true;
+    }
+  }, [evalSet?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save: persist whenever examples change (skip initial load)
+  useEffect(() => {
+    if (initialLoadRef.current) {
+      initialLoadRef.current = false;
+      return;
+    }
+    if (evalSet) {
+      updateEvalSet(evalSet.id, { examples });
+    }
+  }, [examples]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!evalSet) {
+    return (
+      <div className="min-h-screen bg-background px-8 py-10">
+        <p className="text-lg text-muted-foreground">Eval set not found</p>
+      </div>
+    );
+  }
 
   function updateExample(
     index: number,
@@ -52,7 +84,7 @@ export default function EvalSetDetailPage() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          {evalSetName}
+          {evalSet.name}
         </h1>
       </div>
 

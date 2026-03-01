@@ -7,6 +7,7 @@ import { Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import type { Job } from "@/lib/types";
+import { useJobs } from "@/lib/hooks/use-jobs";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RunCard } from "@/components/runs/RunCard";
@@ -44,9 +45,25 @@ function filterJobs(jobs: Job[], tab: string): Job[] {
 export default function RunsPage() {
   const router = useRouter();
   const [tab, setTab] = useState("active");
+  const { jobs, loading, error } = useJobs();
 
-  const jobs: Job[] = [];
   const filtered = filterJobs(jobs, tab);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="h-6 w-6 rounded-full border-2 border-muted-foreground border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-8">
+        <p className="text-sm text-destructive">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background px-8 py-8">

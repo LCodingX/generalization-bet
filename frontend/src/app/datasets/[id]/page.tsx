@@ -8,15 +8,12 @@ import {
   Upload,
   Edit,
   Save,
-  ChevronLeft,
-  ChevronRight,
   CheckSquare,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -25,10 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getCategoryColor } from "@/lib/colors";
+import { useDatasets } from "@/lib/hooks/use-datasets";
 import type { TrainingPair } from "@/lib/types";
-
-// TODO: Fetch dataset rows and metadata from the API
-const ALL_CATEGORIES: string[] = [];
 
 // ---------------------------------------------------------------------------
 // Component
@@ -38,18 +33,42 @@ export default function DatasetDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { datasets, updateDataset } = useDatasets();
 
-  const datasetName = `Dataset ${params.id}`;
+  const dataset = datasets.find((d) => d.id === params.id);
 
-  const [rows, setRows] = useState<TrainingPair[]>([]);
+  const [rows, setRows] = useState<TrainingPair[]>(dataset?.examples ?? []);
   const [editing, setEditing] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [bulkCategory, setBulkCategory] = useState<string>("");
   const [dragOver, setDragOver] = useState(false);
 
-  // Pagination (display-only)
-  const [page] = useState(1);
-  const totalPages = 1;
+  // Derive categories from current rows
+  const allCategories = [...new Set(rows.map((e) => e.category))];
+
+  // Category color map (stable ordering)
+  const categoryIndex = new Map<string, number>();
+  allCategories.forEach((c, i) => categoryIndex.set(c, i));
+
+  // ---- Not found state ----------------------------------------------------
+
+  if (!dataset) {
+    return (
+      <div className="min-h-screen bg-background px-8 py-10">
+        <div className="mb-6 flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => router.push("/datasets")}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            Dataset not found
+          </h1>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          The dataset you are looking for does not exist or has been deleted.
+        </p>
+      </div>
+    );
+  }
 
   // ---- Row editing helpers ------------------------------------------------
 
@@ -79,27 +98,59 @@ export default function DatasetDetailPage() {
     setBulkCategory("");
   }
 
-  // ---- File drop ----------------------------------------------------------
+  function handleSaveToggle() {
+    if (editing) {
+      // Save: persist rows to localStorage via the hook
+      updateDataset(params.id, { examples: rows });
+    }
+    setEditing((v) => !v);
+  }
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  // ---- File handling (JSONL) -----------------------------------------------
+
+  function parseJsonlFile(file: File) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result;
+      if (typeof text !== "string") return;
+      const lines = text.trim().split("\n");
+      const parsed: TrainingPair[] = [];
+      for (const line of lines) {
+        try {
+          const obj = JSON.parse(line);
+          if (obj.prompt != null && obj.completion != null && obj.category != null) {
+            parsed.push({
+              prompt: String(obj.prompt),
+              completion: String(obj.completion),
+              category: String(obj.category),
+            });
+          }
+        } catch {
+          // skip malformed lines
+        }
+      }
+      if (parsed.length > 0) {
+        const updated = [...rows, ...parsed];
+        setRows(updated);
+        updateDataset(params.id, { examples: updated });
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files[0];
-    if (file) console.log("Dropped file:", file.name);
-  }, []);
+    if (file) parseJsonlFile(file);
+  }
 
-  const handleFileChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) console.log("Selected file:", file.name);
-    },
-    []
-  );
-
-  // ---- Category color map (stable ordering) -------------------------------
-
-  const categoryIndex = new Map<string, number>();
-  ALL_CATEGORIES.forEach((c, i) => categoryIndex.set(c, i));
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) parseJsonlFile(file);
+    // Reset so the same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
 
   return (
     <div className="min-h-screen bg-background px-8 py-10">
@@ -109,12 +160,12 @@ export default function DatasetDetailPage() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          {datasetName}
+          {dataset.name}
         </h1>
         <div className="ml-auto">
           <Button
             variant={editing ? "default" : "outline"}
-            onClick={() => setEditing((v) => !v)}
+            onClick={handleSaveToggle}
           >
             {editing ? (
               <>
@@ -182,7 +233,7 @@ export default function DatasetDetailPage() {
               <SelectValue placeholder="Assign category" />
             </SelectTrigger>
             <SelectContent>
-              {ALL_CATEGORIES.map((cat) => (
+              {allCategories.map((cat) => (
                 <SelectItem key={cat} value={cat}>
                   {cat}
                 </SelectItem>
@@ -298,7 +349,7 @@ export default function DatasetDetailPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {ALL_CATEGORIES.map((cat) => (
+                              {allCategories.map((cat) => (
                                 <SelectItem key={cat} value={cat}>
                                   {cat}
                                 </SelectItem>
@@ -327,29 +378,11 @@ export default function DatasetDetailPage() {
         </Card>
       </motion.div>
 
-      {/* Pagination */}
-      <div className="mt-4 flex items-center justify-between">
+      {/* Row count */}
+      <div className="mt-4">
         <p className="text-xs text-muted-foreground">
-          Showing {rows.length} of {rows.length * totalPages} examples
+          {rows.length} example{rows.length !== 1 ? "s" : ""}
         </p>
-        <div className="flex items-center gap-1">
-          <Button variant="outline" size="icon-sm" disabled={page === 1}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          {Array.from({ length: totalPages }, (_, i) => (
-            <Button
-              key={i}
-              variant={page === i + 1 ? "default" : "outline"}
-              size="sm"
-              className="h-8 w-8 p-0 text-xs"
-            >
-              {i + 1}
-            </Button>
-          ))}
-          <Button variant="outline" size="icon-sm" disabled={page === totalPages}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
       </div>
     </div>
   );

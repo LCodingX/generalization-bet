@@ -1,34 +1,151 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trash2, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
-import type { Job, EvalExample } from "@/lib/types";
+import type { EvalExample, HeatmapData } from "@/lib/types";
+import { useJob } from "@/lib/hooks/use-job";
+import { api } from "@/lib/api";
 import { StatusBadge } from "@/components/runs/StatusBadge";
 import { ProgressBar } from "@/components/runs/ProgressBar";
 import { EvalQuestionsPanel } from "@/components/runs/EvalQuestionsPanel";
 import { HyperparameterForm } from "@/components/runs/HyperparameterForm";
 import { TrainingCategories } from "@/components/runs/TrainingCategories";
-
-// TODO: Fetch job, eval examples, and categories from the API
+import { InfluenceHeatmap } from "@/components/viz/InfluenceHeatmap";
 
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
 export default function RunDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const id = params.id as string;
+
+  const { job, scores, loading, error } = useJob(id);
+
   const [selectedEvalIndex, setSelectedEvalIndex] = useState<
     number | undefined
   >(0);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [deleting, setDeleting] = useState(false);
 
-  // TODO: Fetch job, eval examples, and categories from the API
-  const [job] = useState<Job | null>(null);
-  const [evalExamples] = useState<EvalExample[]>([]);
-  const [categories] = useState<{ name: string; count: number }[]>([]);
+  // Derive eval examples from scores (unique eval questions, preserving order)
+  const evalExamples = useMemo<EvalExample[]>(() => {
+    const seen = new Set<string>();
+    const examples: EvalExample[] = [];
+    for (const row of scores) {
+      if (!seen.has(row.eval_question)) {
+        seen.add(row.eval_question);
+        examples.push({ question: row.eval_question, completion: "" });
+      }
+    }
+    return examples;
+  }, [scores]);
 
+  // Derive training categories from scores (unique train_category with counts)
+  const categories = useMemo<{ name: string; count: number }[]>(() => {
+    const countMap = new Map<string, Set<string>>();
+    for (const row of scores) {
+      if (!countMap.has(row.train_category)) {
+        countMap.set(row.train_category, new Set());
+      }
+      countMap.get(row.train_category)!.add(row.train_id);
+    }
+    return Array.from(countMap.entries()).map(([name, ids]) => ({
+      name,
+      count: ids.size,
+    }));
+  }, [scores]);
+
+  // Derive heatmap data: group by (category, eval_question), average tracin scores
+  const heatmapData = useMemo<HeatmapData | null>(() => {
+    if (scores.length === 0) return null;
+
+    const categoryNames = categories.map((c) => c.name);
+    const evalQuestions = evalExamples.map((e) => e.question);
+
+    if (categoryNames.length === 0 || evalQuestions.length === 0) return null;
+
+    const categoryIdx = new Map(categoryNames.map((c, i) => [c, i]));
+    const evalIdx = new Map(evalQuestions.map((q, i) => [q, i]));
+
+    // Accumulate sums and counts for averaging
+    const sums: number[][] = categoryNames.map(() =>
+      new Array(evalQuestions.length).fill(0)
+    );
+    const counts: number[][] = categoryNames.map(() =>
+      new Array(evalQuestions.length).fill(0)
+    );
+
+    for (const row of scores) {
+      const ci = categoryIdx.get(row.train_category);
+      const ei = evalIdx.get(row.eval_question);
+      if (ci !== undefined && ei !== undefined) {
+        sums[ci][ei] += row.tracin_score;
+        counts[ci][ei] += 1;
+      }
+    }
+
+    const matrix = sums.map((row, ri) =>
+      row.map((sum, ci) => (counts[ri][ci] > 0 ? sum / counts[ri][ci] : 0))
+    );
+
+    return { categories: categoryNames, evalQuestions, matrix };
+  }, [scores, categories, evalExamples]);
+
+  // Delete handler
+  async function handleDelete() {
+    if (!confirm("Are you sure you want to delete this run?")) return;
+    setDeleting(true);
+    try {
+      await api.del(`/api/v1/jobs/${id}`);
+      router.push("/runs");
+    } catch {
+      setDeleting(false);
+    }
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background px-8 py-8">
+        <Link
+          href="/runs"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Runs
+        </Link>
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background px-8 py-8">
+        <Link
+          href="/runs"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Runs
+        </Link>
+        <div className="flex items-center justify-center py-24">
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Job not found
   if (!job) {
     return (
       <div className="min-h-screen bg-background px-8 py-8">
@@ -40,7 +157,7 @@ export default function RunDetailPage() {
           Back to Runs
         </Link>
         <div className="flex items-center justify-center py-24">
-          <p className="text-sm text-muted-foreground">Loading run...</p>
+          <p className="text-sm text-muted-foreground">Job not found.</p>
         </div>
       </div>
     );
@@ -64,6 +181,19 @@ export default function RunDetailPage() {
             {job.model_name}
           </h1>
           <StatusBadge status={job.status} />
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+            title="Delete run"
+          >
+            {deleting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+          </button>
         </div>
         <div className="max-w-md">
           <ProgressBar progress={job.progress} />
@@ -72,7 +202,7 @@ export default function RunDetailPage() {
 
       {/* Two-panel layout */}
       <div className="flex gap-6">
-        {/* Left panel — 35% */}
+        {/* Left panel -- 35% */}
         <motion.div
           className="w-[35%] shrink-0 space-y-6"
           initial={{ opacity: 0, x: -20 }}
@@ -102,7 +232,7 @@ export default function RunDetailPage() {
           </div>
         </motion.div>
 
-        {/* Right panel — 65% */}
+        {/* Right panel -- 65% */}
         <motion.div
           className="flex-1 space-y-6"
           initial={{ opacity: 0, x: 20 }}
@@ -126,10 +256,15 @@ export default function RunDetailPage() {
             <h2 className="text-sm font-semibold text-foreground mb-4">
               Influence Scores
             </h2>
-            {job.status === "completed" ? (
-              <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-border p-12">
+            {job.status === "completed" && heatmapData ? (
+              <InfluenceHeatmap
+                data={heatmapData}
+                title="TracIn Influence"
+              />
+            ) : job.status === "completed" ? (
+              <div className="flex items-center justify-center py-12">
                 <p className="text-sm text-muted-foreground">
-                  Heatmap and charts will render here
+                  No influence scores available yet.
                 </p>
               </div>
             ) : (

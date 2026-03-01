@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { LogOut, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,12 +16,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAuth } from "@/lib/auth-context";
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export default function SettingsPage() {
+  const router = useRouter();
+  const { user, signOut } = useAuth();
+
   // Display Preferences
   const [animationSpeed, setAnimationSpeed] = useState<string>("normal");
   const [defaultSort, setDefaultSort] = useState<string>("tracin_desc");
@@ -31,8 +36,12 @@ export default function SettingsPage() {
   const [defaultCheckpointInterval, setDefaultCheckpointInterval] =
     useState(50);
 
-  // TODO: fetch from Supabase auth
-  const userEmail = "";
+  const userEmail = user?.email ?? "";
+
+  async function handleSignOut() {
+    await signOut();
+    router.push("/login");
+  }
 
   return (
     <div className="min-h-screen bg-background px-8 py-10">
@@ -216,7 +225,11 @@ export default function SettingsPage() {
 
               <Separator />
 
-              <Button variant="outline" className="text-destructive">
+              <Button
+                variant="outline"
+                className="text-destructive"
+                onClick={handleSignOut}
+              >
                 <LogOut className="h-4 w-4" />
                 Sign Out
               </Button>
