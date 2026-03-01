@@ -90,14 +90,17 @@ function parseEvalExamples(raw: string): EvalExample[] {
   }
   for (let i = 0; i < parsed.length; i++) {
     const item = parsed[i];
+    const question = item.question ?? item.prompt;
     if (
-      typeof item.question !== "string" ||
+      typeof question !== "string" ||
       typeof item.completion !== "string"
     ) {
       throw new Error(
-        `Eval example at index ${i} must have "question" and "completion" (both strings).`
+        `Eval example at index ${i} must have "question" (or "prompt") and "completion" (both strings).`
       );
     }
+    item.question = question;
+    delete item.prompt;
   }
   return parsed as EvalExample[];
 }
