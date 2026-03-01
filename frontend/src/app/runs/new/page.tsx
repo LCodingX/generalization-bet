@@ -20,7 +20,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -28,7 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { HyperparameterForm } from "@/components/runs/HyperparameterForm";
 
 // ---------------------------------------------------------------------------
 // Placeholder formats
@@ -118,8 +116,8 @@ export default function NewRunPage() {
   const [datasetJson, setDatasetJson] = useState("");
   const [selectedEvalSetId, setSelectedEvalSetId] = useState<string>(NONE_VALUE);
   const [evalJson, setEvalJson] = useState("");
-  const [hyperparameters, setHyperparameters] = useState<Hyperparameters>(
-    DEFAULT_HYPERPARAMETERS
+  const [hyperparametersJson, setHyperparametersJson] = useState(
+    JSON.stringify(DEFAULT_HYPERPARAMETERS, null, 2)
   );
 
   const [submitting, setSubmitting] = useState(false);
@@ -182,6 +180,17 @@ export default function NewRunPage() {
     } catch (err) {
       setError(
         `Invalid eval examples JSON: ${err instanceof Error ? err.message : String(err)}`
+      );
+      return;
+    }
+
+    // Parse hyperparameters JSON
+    let hyperparameters: Partial<Hyperparameters>;
+    try {
+      hyperparameters = JSON.parse(hyperparametersJson);
+    } catch (err) {
+      setError(
+        `Invalid hyperparameters JSON: ${err instanceof Error ? err.message : String(err)}`
       );
       return;
     }
@@ -353,10 +362,10 @@ export default function NewRunPage() {
           <h2 className="text-sm font-semibold text-foreground">
             Hyperparameters
           </h2>
-          <Separator />
-          <HyperparameterForm
-            values={hyperparameters}
-            onChange={setHyperparameters}
+          <Textarea
+            value={hyperparametersJson}
+            onChange={(e) => setHyperparametersJson(e.target.value)}
+            className="min-h-[260px] font-mono text-xs"
           />
         </div>
 

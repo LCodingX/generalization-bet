@@ -13,10 +13,23 @@ export function useJob(jobId: string) {
 
   const fetchScores = useCallback(async () => {
     try {
-      const data = await api.get<ScoresResponse>(
-        `/api/v1/jobs/${jobId}/scores?limit=1000`
-      );
-      setScores(data.scores);
+      const PAGE_SIZE = 1000;
+      let offset = 0;
+      let allScores: InfluenceScoreRow[] = [];
+
+      // Paginate until we have all scores
+      while (true) {
+        const data = await api.get<ScoresResponse>(
+          `/api/v1/jobs/${jobId}/scores?limit=${PAGE_SIZE}&offset=${offset}`
+        );
+        allScores = allScores.concat(data.scores);
+        if (allScores.length >= data.total || data.scores.length < PAGE_SIZE) {
+          break;
+        }
+        offset += PAGE_SIZE;
+      }
+
+      setScores(allScores);
     } catch {
       // Scores may not be available yet
     }

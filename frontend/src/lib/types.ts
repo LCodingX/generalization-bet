@@ -39,12 +39,12 @@ export const DEFAULT_HYPERPARAMETERS: Hyperparameters = {
   learning_rate: 2e-4,
   epochs: 3,
   batch_size: 4,
-  lora_rank: 16,
-  lora_alpha: 32,
+  lora_rank: 8,
+  lora_alpha: 16,
   lora_dropout: 0.05,
-  checkpoint_interval: 50,
+  checkpoint_interval: 10,
   max_seq_length: 512,
-  datainf_damping: 0.1,
+  datainf_damping: 0.01,
 };
 
 export interface TrainingPair {
