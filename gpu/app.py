@@ -3,9 +3,6 @@ import sys
 
 import modal
 
-from config import JobConfig
-from webhook import WebhookClient
-
 logger = logging.getLogger(__name__)
 
 app = modal.App("tracin-runner")
@@ -71,6 +68,8 @@ def train_and_compute_influence(
         sys.path.insert(0, "/root")
 
     import torch
+    from config import JobConfig
+    from webhook import WebhookClient
     from model_loader import load_model_and_tokenizer, create_lora_model
     from dataset import (
         download_and_parse_dataset,
@@ -85,6 +84,7 @@ def train_and_compute_influence(
         fetch_training_example_uuids,
         fetch_eval_example_uuids,
         write_influence_scores,
+        write_telemetry,
     )
 
     webhook = WebhookClient(callback_url, webhook_secret, job_id)
@@ -119,7 +119,7 @@ def train_and_compute_influence(
 
         webhook.send("provisioning", 0.05, f"Loaded {len(raw_training)} training, {len(eval_examples)} eval examples")
 
-        # ---- Create Supabase client early (needed for telemetry during training) ----
+        # ---- Create Supabase client (needed for score writing after training) ----
         sb_client = get_client(supabase_url, supabase_service_key)
 
         # Extract per-example categories for telemetry grouping
@@ -138,8 +138,6 @@ def train_and_compute_influence(
             device=device,
             webhook=webhook,
             categories=categories,
-            supabase_client=sb_client,
-            job_id=job_id,
         )
 
         # ---- DataInf ----
@@ -168,6 +166,9 @@ def train_and_compute_influence(
             train_uuid_map=train_uuid_map,
             eval_uuid_map=eval_uuid_map,
         )
+
+        # ---- Write telemetry (all entries accumulated during training) ----
+        write_telemetry(sb_client, job_id, telemetry)
 
         # ---- Done ----
         webhook.send("completed", 1.0, f"Done. {n_written} influence scores computed.")

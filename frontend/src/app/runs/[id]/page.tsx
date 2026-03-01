@@ -373,8 +373,8 @@ export default function RunDetailPage() {
             />
           </div>
 
-          {/* Training Telemetry */}
-          {gradientNormsData.length > 0 && (
+          {/* Training Telemetry (shown after job completes) */}
+          {job.status === "completed" && gradientNormsData.length > 0 && (
             <div className="space-y-6">
               <GradientNormsChart
                 data={gradientNormsData}

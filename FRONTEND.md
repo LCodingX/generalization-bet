@@ -153,9 +153,9 @@ Minimal. No credential storage for Modal/HF keys (project-owned infrastructure).
 
 All visualizations live in the Run Detail right panel. Two groups:
 
-### A. Live Telemetry (Line Charts — Update During Training)
+### A. Training Telemetry (Line Charts — Shown After Job Completes)
 
-These charts grow as training progresses. When a new epoch completes, the backend writes metrics and Supabase Realtime pushes updates. The frontend appends new data points and Recharts animates the transition.
+These charts are computed during training but rendered only after the job completes. The GPU container accumulates telemetry entries (gradient norms, LCS) throughout training and writes them to the database in a single batch after scores are written, just before the "completed" webhook. When the frontend receives the "completed" status via Supabase Realtime, the telemetry data is already available and charts render immediately with all data points.
 
 #### Plot 1: Gradient Norms
 - **X axis**: Epoch (integer)
@@ -164,7 +164,7 @@ These charts grow as training progresses. When a new epoch completes, the backen
   - **Bold, vibrant** primary line: `y₀ = ‖∇Φ‖` (global training gradient norm)
   - **Thin, semi-transparent** lines: `y₁…yₙ = ‖∇Φₖ‖` (per-partition gradient norms), colored by partition color palette
 - **Interaction**: Hover shows tooltip with all values at that epoch. Click a legend entry to toggle partition visibility.
-- **Animation**: New points ease in from the right edge (Recharts `isAnimationActive`, `animationDuration={800}`)
+- **Animation**: Chart entrance animation when data appears (Recharts `isAnimationActive`, `animationDuration={800}`)
 
 #### Plot 2: Local Cosine Similarity (LCS)
 - **X axis**: Epoch (integer)
@@ -215,8 +215,7 @@ These charts grow as training progresses. When a new epoch completes, the backen
 ### Supabase Realtime (Live Updates)
 - Subscribe to `jobs` table changes filtered by the active run's `job_id`
 - When `progress` or `status` changes, update the run card and detail view
-- For chart data: the Modal container writes epoch metrics (gradient norms, LCS values) either to a `job_metrics` table or as JSONB in the `jobs.hyperparameters` column (TBD — this needs a backend schema addition for live telemetry, separate from the final influence_scores)
-- **Note**: The current backend schema stores only final `influence_scores`. Live gradient norms and LCS values during training will need either: (a) a new `job_telemetry` table with `(job_id, epoch, metric_name, metric_value)`, or (b) the Modal container sends them via the webhook callback payload and FastAPI stores them. This is the main integration gap to resolve.
+- For chart data: the Modal container accumulates telemetry (gradient norms, LCS values) in memory during training and writes them as a single JSONB array to `jobs.telemetry` after training completes, just before the "completed" webhook. No live telemetry streaming — all charts render once with complete data when the job finishes.
 
 ### Score Fetching (Post-Training)
 - `GET /api/v1/jobs/{job_id}/scores` returns the influence matrix
@@ -290,8 +289,8 @@ src/
 ```
 
 ## Open Questions for Backend Integration
-1. **Live telemetry storage**: Where do gradient norms and LCS values live between epochs? Current schema has no `job_telemetry` table. Options: (a) new table, (b) webhook payload expansion, (c) append to `jobs.hyperparameters` JSONB.
-2. **LCS offset parameter `s`**: Is this a fixed value or configurable? Need to know so the frontend can correctly show the delayed region.
-3. **LCS threshold `k`**: How is this set? Fixed? Per-run? Needed to know when to show gaps in the LCS plot.
-4. **Heatmap at partition vs. example level**: Backend currently returns per-`train_id` scores. Are these partition-level (one row per category) or per-example? Frontend aggregation strategy depends on this.
-5. **Stacked bar graph data**: Requires per-(category, eval_question) scores, which is what `influence_scores` already stores. Confirmed feasible.
+1. ~~**Live telemetry storage**~~: Resolved — telemetry stored in `jobs.telemetry` JSONB column, written once after training completes.
+2. **LCS offset parameter `s`**: Derived from `checkpoint_interval` hyperparameter.
+3. **LCS threshold `k`**: LCS entries with null values are filtered out on the frontend.
+4. **Heatmap at partition vs. example level**: Per-example scores, aggregated (averaged) by category on the frontend.
+5. **Stacked bar graph data**: Confirmed feasible — `influence_scores` stores per-(train_example, eval_example) scores.

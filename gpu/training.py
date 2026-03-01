@@ -2,7 +2,6 @@ import logging
 
 import numpy as np
 import torch
-from supabase import Client
 
 from config import JobConfig
 from gradient_utils import extract_lora_parameter_vector, get_lora_parameter_names
@@ -82,8 +81,6 @@ def run_training_loop(
     device: torch.device,
     webhook: WebhookClient | None = None,
     categories: list[str] | None = None,
-    supabase_client: Client | None = None,
-    job_id: str | None = None,
 ) -> tuple[np.ndarray, list[dict]]:
     """Custom training loop with TracIn checkpointing and telemetry.
 
@@ -101,16 +98,12 @@ def run_training_loop(
         device: Torch device.
         webhook: Optional webhook client for progress updates.
         categories: Per-example category labels (same length as training_data).
-        supabase_client: Supabase client for writing telemetry incrementally.
-        job_id: Job ID for telemetry writes.
 
     Returns:
         Tuple of:
         - Accumulated TracIn scores: np.ndarray of shape (n_train, n_eval).
         - Telemetry entries: list of dicts.
     """
-    from supabase_writer import write_telemetry
-
     n_train = len(training_data)
     n_eval = len(eval_tokens)
     if categories is None:
@@ -139,7 +132,7 @@ def run_training_loop(
         param_snapshots.append(extract_lora_parameter_vector(model, param_names))
 
     def _record_telemetry(step: int, epoch: int, norms: np.ndarray) -> None:
-        """Record telemetry entry and write to Supabase."""
+        """Record telemetry entry (written to DB after training completes)."""
         entry = _collect_telemetry_entry(
             step=step,
             epoch=epoch,
@@ -149,12 +142,6 @@ def run_training_loop(
             category_param_snapshots=category_param_snapshots,
         )
         telemetry.append(entry)
-
-        if supabase_client and job_id:
-            try:
-                write_telemetry(supabase_client, job_id, telemetry)
-            except Exception as e:
-                logger.warning(f"Failed to write telemetry: {e}")
 
     for epoch in range(config.epochs):
         model.train()
