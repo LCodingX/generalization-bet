@@ -108,27 +108,49 @@ export default function DatasetDetailPage() {
 
   // ---- File handling (JSONL) -----------------------------------------------
 
-  function parseJsonlFile(file: File) {
+  function parseFile(file: File) {
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result;
       if (typeof text !== "string") return;
-      const lines = text.trim().split("\n");
-      const parsed: TrainingPair[] = [];
-      for (const line of lines) {
-        try {
-          const obj = JSON.parse(line);
-          if (obj.prompt != null && obj.completion != null && obj.category != null) {
-            parsed.push({
-              prompt: String(obj.prompt),
-              completion: String(obj.completion),
-              category: String(obj.category),
-            });
+
+      let items: unknown[] = [];
+
+      // Try parsing as a JSON array first
+      try {
+        const json = JSON.parse(text);
+        if (Array.isArray(json)) {
+          items = json;
+        }
+      } catch {
+        // Not a JSON array — try JSONL (one JSON object per line)
+        for (const line of text.trim().split("\n")) {
+          try {
+            items.push(JSON.parse(line));
+          } catch {
+            // skip malformed lines
           }
-        } catch {
-          // skip malformed lines
         }
       }
+
+      const parsed: TrainingPair[] = [];
+      for (const obj of items) {
+        if (
+          obj != null &&
+          typeof obj === "object" &&
+          "prompt" in obj &&
+          "completion" in obj &&
+          "category" in obj
+        ) {
+          const o = obj as Record<string, unknown>;
+          parsed.push({
+            prompt: String(o.prompt),
+            completion: String(o.completion),
+            category: String(o.category),
+          });
+        }
+      }
+
       if (parsed.length > 0) {
         const updated = [...rows, ...parsed];
         setRows(updated);
@@ -142,12 +164,12 @@ export default function DatasetDetailPage() {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files[0];
-    if (file) parseJsonlFile(file);
+    if (file) parseFile(file);
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) parseJsonlFile(file);
+    if (file) parseFile(file);
     // Reset so the same file can be re-selected
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
