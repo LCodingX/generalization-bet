@@ -37,8 +37,8 @@ TEST_WEBHOOK_SECRET = "a" * 64
 def test_settings() -> Settings:
     return Settings(
         supabase_url="https://test.supabase.co",
-        supabase_service_key="test-service-key",
-        supabase_jwt_secret=TEST_JWT_SECRET,
+        supabase_publishable_key="sb_publishable_test",
+        supabase_secret_key="sb_secret_test",
         modal_token_id="ak-test",
         modal_token_secret="as-test",
         webhook_secret=TEST_WEBHOOK_SECRET,

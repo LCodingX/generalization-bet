@@ -181,7 +181,7 @@ call = f.spawn(
     config=job_hyperparameters,       # Dict including datainf_damping, checkpoint_interval
     job_id=str(job_id),              # So the container can write back
     supabase_url=SUPABASE_URL,       # Container writes results directly
-    supabase_service_key=SUPABASE_SERVICE_KEY,  # Service role for direct DB writes
+    supabase_service_key=SUPABASE_SECRET_KEY,   # Secret key for direct DB writes
     callback_url=CALLBACK_URL,       # Webhook URL for status updates
     webhook_secret=WEBHOOK_SECRET,   # For HMAC signing
 )

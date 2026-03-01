@@ -10,7 +10,7 @@ def get_supabase_client(settings: Settings) -> Client:
     Returns a Supabase client using the SERVICE ROLE key.
     This bypasses RLS — use only in the backend, never expose to frontend.
     """
-    return create_client(settings.supabase_url, settings.supabase_service_key)
+    return create_client(settings.supabase_url, settings.supabase_secret_key)
 
 
 # ============================================================

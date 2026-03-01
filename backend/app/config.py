@@ -5,8 +5,8 @@ from functools import lru_cache
 class Settings(BaseSettings):
     # Supabase
     supabase_url: str
-    supabase_service_key: str  # Service role — server-side only, bypasses RLS
-    supabase_jwt_secret: str  # For verifying user JWTs
+    supabase_publishable_key: str  # Client-safe, respects RLS
+    supabase_secret_key: str  # Server-side only, bypasses RLS
 
     # Modal (read automatically by Modal SDK from env, but we validate presence)
     modal_token_id: str

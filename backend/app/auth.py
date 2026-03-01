@@ -1,8 +1,11 @@
 import hmac
 import hashlib
+from functools import lru_cache
 from typing import Annotated
 
+import httpx
 import jwt
+from jwt import PyJWKClient
 from fastapi import Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel
 
@@ -15,13 +18,20 @@ class AuthenticatedUser(BaseModel):
     email: str | None = None
 
 
+@lru_cache()
+def _get_jwks_client(supabase_url: str) -> PyJWKClient:
+    """Cached JWKS client that fetches public keys from Supabase."""
+    jwks_url = f"{supabase_url}/auth/v1/.well-known/jwks.json"
+    return PyJWKClient(jwks_url)
+
+
 async def get_current_user(
     request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> AuthenticatedUser:
     """
     Verify the Supabase JWT from the Authorization header.
-    Supabase JWTs use HS256 signed with the project's JWT secret.
+    Uses JWKS (asymmetric RS256) for new Supabase projects.
     The user_id lives in the 'sub' claim.
     """
     auth_header = request.headers.get("Authorization")
@@ -34,10 +44,12 @@ async def get_current_user(
     token = auth_header.removeprefix("Bearer ").strip()
 
     try:
+        jwks_client = _get_jwks_client(settings.supabase_url)
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
         payload = jwt.decode(
             token,
-            settings.supabase_jwt_secret,
-            algorithms=["HS256"],
+            signing_key.key,
+            algorithms=["RS256"],
             audience="authenticated",
         )
     except jwt.ExpiredSignatureError:

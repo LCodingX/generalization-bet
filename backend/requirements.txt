@@ -5,7 +5,7 @@ pydantic>=2.9.0
 pydantic-settings>=2.5.0
 
 # Auth
-PyJWT>=2.9.0
+PyJWT[crypto]>=2.9.0
 
 # Database & Storage
 supabase>=2.9.0

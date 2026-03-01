@@ -32,7 +32,7 @@ async def dispatch_job(
             config=config,
             job_id=job_id,
             supabase_url=settings.supabase_url,
-            supabase_service_key=settings.supabase_service_key,
+            supabase_service_key=settings.supabase_secret_key,
             callback_url=f"{settings.callback_base_url}/api/v1/callbacks/job-update",
             webhook_secret=settings.webhook_secret,
             hf_token=settings.hf_token,

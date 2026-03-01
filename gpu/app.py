@@ -38,7 +38,7 @@ image = (
 
 @app.function(
     image=image,
-    gpu=modal.gpu.A100(size="80GB"),
+    gpu="A100-80GB",
     timeout=6 * 3600,
     memory=32768,
     retries=0,
