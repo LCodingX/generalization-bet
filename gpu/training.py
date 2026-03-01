@@ -209,21 +209,20 @@ def run_training_loop(
         avg_loss = epoch_loss / len(train_loader)
         logger.info(f"Epoch {epoch + 1}/{config.epochs} complete, avg loss={avg_loss:.4f}")
 
-    # Final TracIn checkpoint if last step wasn't one
-    if global_step % config.checkpoint_interval != 0:
-        logger.info(f"Final TracIn checkpoint at step {global_step}")
+        # Record telemetry at the end of every epoch (if not already recorded at this step)
+        if global_step % config.checkpoint_interval != 0:
+            _snapshot_params()
 
-        _snapshot_params()
-
-        checkpoint_scores, checkpoint_norms = compute_tracin_at_checkpoint(
-            model=model,
-            training_data=training_data,
-            eval_tokens=eval_tokens,
-            learning_rate=config.learning_rate,
-            device=device,
-        )
-        tracin_scores += checkpoint_scores
-        _record_telemetry(global_step, config.epochs, checkpoint_norms)
+            # Compute per-example gradient norms for telemetry
+            checkpoint_scores, checkpoint_norms = compute_tracin_at_checkpoint(
+                model=model,
+                training_data=training_data,
+                eval_tokens=eval_tokens,
+                learning_rate=config.learning_rate,
+                device=device,
+            )
+            tracin_scores += checkpoint_scores
+            _record_telemetry(global_step, epoch + 1, checkpoint_norms)
 
     if webhook:
         webhook.send("computing_tracin", 0.65, "Training complete, TracIn scores accumulated")
