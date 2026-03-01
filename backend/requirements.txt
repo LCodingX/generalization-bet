@@ -1,0 +1,17 @@
+# Core
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.9.0
+pydantic-settings>=2.5.0
+
+# Auth
+PyJWT>=2.9.0
+
+# Database & Storage
+supabase>=2.9.0
+
+# GPU Orchestration
+modal>=0.67.0
+
+# HTTP client (if needed for additional integrations)
+httpx>=0.27.0
