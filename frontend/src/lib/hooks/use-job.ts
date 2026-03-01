@@ -67,12 +67,10 @@ export function useJob(jobId: string) {
           table: "jobs",
           filter: `id=eq.${jobId}`,
         },
-        (payload) => {
-          const updated = payload.new as Job;
-          setJob(updated);
-          if (updated.status === "completed") {
-            fetchScores();
-          }
+        () => {
+          // Realtime notifies us of changes — re-fetch full job via API
+          // to avoid partial payloads overwriting telemetry/other fields
+          fetchJob();
         }
       )
       .subscribe();
@@ -80,7 +78,7 @@ export function useJob(jobId: string) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [jobId, fetchScores]);
+  }, [jobId, fetchJob]);
 
   return { job, scores, loading, error };
 }

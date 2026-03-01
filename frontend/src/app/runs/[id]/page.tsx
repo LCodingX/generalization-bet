@@ -373,22 +373,6 @@ export default function RunDetailPage() {
             />
           </div>
 
-          {/* Training Telemetry (shown after job completes) */}
-          {job.status === "completed" && gradientNormsData.length > 0 && (
-            <div className="space-y-6">
-              <GradientNormsChart
-                data={gradientNormsData}
-                categories={telemetryCategories}
-              />
-              {lcsData.length > 0 && (
-                <LCSChart
-                  data={lcsData}
-                  categories={telemetryCategories}
-                />
-              )}
-            </div>
-          )}
-
           {/* Influence Scores */}
           {job.status === "completed" && heatmapData ? (
             <div className="space-y-6">
@@ -471,6 +455,22 @@ export default function RunDetailPage() {
                   <span className="font-mono">{job.status}</span>
                 </p>
               </div>
+            </div>
+          )}
+
+          {/* Training Telemetry (shown after job completes) */}
+          {job.status === "completed" && gradientNormsData.length > 0 && (
+            <div className="space-y-6">
+              <GradientNormsChart
+                data={gradientNormsData}
+                categories={telemetryCategories}
+              />
+              {lcsData.length > 0 && (
+                <LCSChart
+                  data={lcsData}
+                  categories={telemetryCategories}
+                />
+              )}
             </div>
           )}
         </motion.div>
