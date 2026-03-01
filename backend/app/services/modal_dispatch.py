@@ -24,7 +24,7 @@ async def dispatch_job(
     automatically — no credential injection needed.
     """
     try:
-        f = modal.Function.lookup(settings.modal_app_name, settings.modal_function_name)
+        f = modal.Function.from_name(settings.modal_app_name, settings.modal_function_name)
 
         call = f.spawn(
             dataset_url=dataset_url,
