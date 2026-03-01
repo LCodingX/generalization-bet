@@ -92,7 +92,7 @@ export default function RunsPage() {
           {filtered.length === 0 ? (
             <div className="flex items-center justify-center py-24">
               <p className="text-sm text-muted-foreground">
-                No runs yet. Create your first run.
+                No {tab} runs
               </p>
             </div>
           ) : (

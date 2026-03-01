@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Trash2, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
-import type { EvalExample, HeatmapData } from "@/lib/types";
+import type { EvalExample, HeatmapData, CategoryAggregate } from "@/lib/types";
 import { useJob } from "@/lib/hooks/use-job";
 import { api } from "@/lib/api";
 import { StatusBadge } from "@/components/runs/StatusBadge";
@@ -15,6 +15,8 @@ import { EvalQuestionsPanel } from "@/components/runs/EvalQuestionsPanel";
 import { HyperparameterForm } from "@/components/runs/HyperparameterForm";
 import { TrainingCategories } from "@/components/runs/TrainingCategories";
 import { InfluenceHeatmap } from "@/components/viz/InfluenceHeatmap";
+import { AggregatedBarChart } from "@/components/viz/AggregatedBarChart";
+import { Leaderboard } from "@/components/viz/Leaderboard";
 
 // ---------------------------------------------------------------------------
 // Page
@@ -95,6 +97,90 @@ export default function RunDetailPage() {
     );
 
     return { categories: categoryNames, evalQuestions, matrix };
+  }, [scores, categories, evalExamples]);
+
+  // Derive DataInf heatmap data (same structure, but using datainf_score)
+  const datainfHeatmapData = useMemo<HeatmapData | null>(() => {
+    if (scores.length === 0) return null;
+
+    const categoryNames = categories.map((c) => c.name);
+    const evalQuestions = evalExamples.map((e) => e.question);
+
+    if (categoryNames.length === 0 || evalQuestions.length === 0) return null;
+
+    const categoryIdx = new Map(categoryNames.map((c, i) => [c, i]));
+    const evalIdx = new Map(evalQuestions.map((q, i) => [q, i]));
+
+    const sums: number[][] = categoryNames.map(() =>
+      new Array(evalQuestions.length).fill(0)
+    );
+    const counts: number[][] = categoryNames.map(() =>
+      new Array(evalQuestions.length).fill(0)
+    );
+
+    for (const row of scores) {
+      const ci = categoryIdx.get(row.train_category);
+      const ei = evalIdx.get(row.eval_question);
+      if (ci !== undefined && ei !== undefined) {
+        sums[ci][ei] += row.datainf_score;
+        counts[ci][ei] += 1;
+      }
+    }
+
+    const matrix = sums.map((row, ri) =>
+      row.map((sum, ci) => (counts[ri][ci] > 0 ? sum / counts[ri][ci] : 0))
+    );
+
+    return { categories: categoryNames, evalQuestions, matrix };
+  }, [scores, categories, evalExamples]);
+
+  // Derive aggregated scores per category for bar chart + leaderboard
+  const categoryAggregates = useMemo<CategoryAggregate[]>(() => {
+    if (scores.length === 0) return [];
+
+    const categoryNames = categories.map((c) => c.name);
+    const evalQuestions = evalExamples.map((e) => e.question);
+
+    const aggMap = new Map<
+      string,
+      {
+        tracin_total: number;
+        datainf_total: number;
+        eval_contributions: Map<string, { tracin: number; datainf: number }>;
+      }
+    >();
+
+    for (const cat of categoryNames) {
+      const contribs = new Map<string, { tracin: number; datainf: number }>();
+      for (const eq of evalQuestions) {
+        contribs.set(eq, { tracin: 0, datainf: 0 });
+      }
+      aggMap.set(cat, { tracin_total: 0, datainf_total: 0, eval_contributions: contribs });
+    }
+
+    for (const row of scores) {
+      const agg = aggMap.get(row.train_category);
+      if (!agg) continue;
+      agg.tracin_total += row.tracin_score;
+      agg.datainf_total += row.datainf_score;
+      const contrib = agg.eval_contributions.get(row.eval_question);
+      if (contrib) {
+        contrib.tracin += row.tracin_score;
+        contrib.datainf += row.datainf_score;
+      }
+    }
+
+    return categoryNames.map((cat) => {
+      const agg = aggMap.get(cat)!;
+      return {
+        category: cat,
+        tracin_total: agg.tracin_total,
+        datainf_total: agg.datainf_total,
+        eval_contributions: Array.from(agg.eval_contributions.entries()).map(
+          ([eq, v]) => ({ eval_question: eq, tracin: v.tracin, datainf: v.datainf })
+        ),
+      };
+    });
   }, [scores, categories, evalExamples]);
 
   // Delete handler
@@ -257,10 +343,36 @@ export default function RunDetailPage() {
               Influence Scores
             </h2>
             {job.status === "completed" && heatmapData ? (
-              <InfluenceHeatmap
-                data={heatmapData}
-                title="TracIn Influence"
-              />
+              <div className="space-y-6">
+                {/* Heatmaps */}
+                <InfluenceHeatmap
+                  data={heatmapData}
+                  title="TracIn Influence"
+                />
+                {datainfHeatmapData && (
+                  <InfluenceHeatmap
+                    data={datainfHeatmapData}
+                    title="DataInf Influence"
+                  />
+                )}
+
+                {/* Bar Chart */}
+                {categoryAggregates.length > 0 && (
+                  <AggregatedBarChart
+                    data={categoryAggregates}
+                    metric="tracin"
+                  />
+                )}
+
+                {/* Leaderboard */}
+                {categoryAggregates.length > 0 && (
+                  <Leaderboard
+                    data={categoryAggregates}
+                    metric="tracin"
+                    onSelectCategory={setSelectedCategory}
+                  />
+                )}
+              </div>
             ) : job.status === "completed" ? (
               <div className="flex items-center justify-center py-12">
                 <p className="text-sm text-muted-foreground">

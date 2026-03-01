@@ -25,3 +25,4 @@ out/
 
 # Claude Code
 .claude/
+.vercel
