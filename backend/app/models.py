@@ -26,7 +26,7 @@ class Hyperparameters(BaseModel):
     lora_dropout: float = Field(default=0.05, ge=0.0, le=0.5)
     checkpoint_interval: int = Field(
         default=50,
-        ge=10,
+        ge=1,
         le=1000,
         description="Steps between TracIn gradient computations",
     )
@@ -117,6 +117,7 @@ class JobResponse(BaseModel):
     progress: float
     model_name: str
     hyperparameters: dict
+    telemetry: list = Field(default_factory=list)
     created_at: datetime
     started_at: datetime | None
     completed_at: datetime | None

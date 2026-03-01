@@ -15,6 +15,18 @@ def get_lora_parameter_names(model) -> list[str]:
     return sorted(names)
 
 
+def extract_lora_parameter_vector(model, param_names: list[str]) -> torch.Tensor:
+    """Concatenate all LoRA parameter values into a single flat float32 CPU vector.
+
+    Used for LCS (Linear CKA Similarity) computation between checkpoints.
+    """
+    params = []
+    for name in param_names:
+        param = dict(model.named_parameters())[name]
+        params.append(param.data.detach().float().cpu().flatten())
+    return torch.cat(params)
+
+
 def extract_lora_gradient_vector(model, param_names: list[str]) -> torch.Tensor:
     """Concatenate all LoRA gradients into a single flat float32 CPU vector.
 

@@ -18,7 +18,7 @@ def compute_tracin_at_checkpoint(
     eval_tokens: list[dict],
     learning_rate: float,
     device: torch.device,
-) -> np.ndarray:
+) -> tuple[np.ndarray, np.ndarray]:
     """Compute TracIn influence scores at a single checkpoint.
 
     For each eval example, computes its gradient, then dots it with each
@@ -32,7 +32,9 @@ def compute_tracin_at_checkpoint(
         device: Torch device.
 
     Returns:
-        np.ndarray of shape (n_train, n_eval) — this checkpoint's contribution.
+        Tuple of:
+        - scores: np.ndarray of shape (n_train, n_eval) — this checkpoint's contribution.
+        - norms: np.ndarray of shape (n_train,) — per-example gradient norms.
     """
     param_names = get_lora_parameter_names(model)
     n_train = len(training_data)
@@ -53,14 +55,17 @@ def compute_tracin_at_checkpoint(
     # Step 2: Stream training gradients, dot product with all eval grads
     logger.info(f"Computing {n_train} training gradients for TracIn checkpoint")
     scores = np.zeros((n_train, n_eval), dtype=np.float32)
+    norms = np.zeros(n_train, dtype=np.float32)
 
     for i in range(n_train):
         model.zero_grad()
         compute_per_example_loss(model, training_data[i], device)
         train_grad = extract_lora_gradient_vector(model, param_names)
 
+        norms[i] = torch.linalg.norm(train_grad).item()
+
         # Dot product with all eval grads: (n_eval,)
         dots = torch.mv(eval_grad_matrix, train_grad).numpy()
         scores[i, :] = learning_rate * dots
 
-    return scores
+    return scores, norms

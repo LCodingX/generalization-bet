@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Trash2, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
-import type { EvalExample, HeatmapData, CategoryAggregate } from "@/lib/types";
+import type { EvalExample, HeatmapData, CategoryAggregate, TelemetryEntry } from "@/lib/types";
 import { useJob } from "@/lib/hooks/use-job";
 import { api } from "@/lib/api";
 import { StatusBadge } from "@/components/runs/StatusBadge";
@@ -17,6 +17,8 @@ import { TrainingCategories } from "@/components/runs/TrainingCategories";
 import { InfluenceHeatmap } from "@/components/viz/InfluenceHeatmap";
 import { AggregatedBarChart } from "@/components/viz/AggregatedBarChart";
 import { Leaderboard } from "@/components/viz/Leaderboard";
+import { GradientNormsChart } from "@/components/viz/GradientNormsChart";
+import { LCSChart } from "@/components/viz/LCSChart";
 
 // ---------------------------------------------------------------------------
 // Page
@@ -33,6 +35,7 @@ export default function RunDetailPage() {
     number | undefined
   >(0);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [metric, setMetric] = useState<"tracin" | "datainf">("tracin");
   const [deleting, setDeleting] = useState(false);
 
   // Derive eval examples from scores (unique eval questions, preserving order)
@@ -182,6 +185,39 @@ export default function RunDetailPage() {
       };
     });
   }, [scores, categories, evalExamples]);
+
+  // Derive telemetry chart data
+  const telemetryCategories = useMemo<string[]>(() => {
+    const telemetry = job?.telemetry ?? [];
+    if (telemetry.length === 0) return [];
+    const cats = new Set<string>();
+    for (const entry of telemetry) {
+      for (const cat of Object.keys(entry.partition_grad_norms ?? {})) {
+        cats.add(cat);
+      }
+    }
+    return Array.from(cats).sort();
+  }, [job?.telemetry]);
+
+  const gradientNormsData = useMemo(() => {
+    const telemetry = job?.telemetry ?? [];
+    return telemetry.map((entry: TelemetryEntry) => ({
+      epoch: entry.step,
+      global: entry.global_grad_norm,
+      partitions: entry.partition_grad_norms ?? {},
+    }));
+  }, [job?.telemetry]);
+
+  const lcsData = useMemo(() => {
+    const telemetry = job?.telemetry ?? [];
+    return telemetry
+      .filter((entry: TelemetryEntry) => entry.global_lcs !== null)
+      .map((entry: TelemetryEntry) => ({
+        epoch: entry.step,
+        global: entry.global_lcs as number,
+        partitions: entry.partition_lcs ?? {},
+      }));
+  }, [job?.telemetry]);
 
   // Delete handler
   async function handleDelete() {
@@ -337,49 +373,97 @@ export default function RunDetailPage() {
             />
           </div>
 
-          {/* Influence Scores */}
-          <div className="card-elevated rounded-xl border border-border bg-white p-5">
-            <h2 className="text-sm font-semibold text-foreground mb-4">
-              Influence Scores
-            </h2>
-            {job.status === "completed" && heatmapData ? (
-              <div className="space-y-6">
-                {/* Heatmaps */}
-                <InfluenceHeatmap
-                  data={heatmapData}
-                  title="TracIn Influence"
+          {/* Training Telemetry */}
+          {gradientNormsData.length > 0 && (
+            <div className="space-y-6">
+              <GradientNormsChart
+                data={gradientNormsData}
+                categories={telemetryCategories}
+              />
+              {lcsData.length > 0 && (
+                <LCSChart
+                  data={lcsData}
+                  categories={telemetryCategories}
                 />
-                {datainfHeatmapData && (
-                  <InfluenceHeatmap
-                    data={datainfHeatmapData}
-                    title="DataInf Influence"
-                  />
-                )}
+              )}
+            </div>
+          )}
 
-                {/* Bar Chart */}
-                {categoryAggregates.length > 0 && (
-                  <AggregatedBarChart
-                    data={categoryAggregates}
-                    metric="tracin"
-                  />
-                )}
-
-                {/* Leaderboard */}
-                {categoryAggregates.length > 0 && (
-                  <Leaderboard
-                    data={categoryAggregates}
-                    metric="tracin"
-                    onSelectCategory={setSelectedCategory}
-                  />
-                )}
+          {/* Influence Scores */}
+          {job.status === "completed" && heatmapData ? (
+            <div className="space-y-6">
+              {/* Metric toggle header */}
+              <div className="card-elevated rounded-xl border border-border bg-white p-5">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-foreground">
+                    Influence Scores
+                  </h2>
+                  <div className="flex gap-1 rounded-lg bg-muted p-1">
+                    <button
+                      type="button"
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors font-sans ${
+                        metric === "tracin"
+                          ? "bg-white text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                      onClick={() => setMetric("tracin")}
+                    >
+                      TracIn
+                    </button>
+                    <button
+                      type="button"
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors font-sans ${
+                        metric === "datainf"
+                          ? "bg-white text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                      onClick={() => setMetric("datainf")}
+                    >
+                      DataInf
+                    </button>
+                  </div>
+                </div>
               </div>
-            ) : job.status === "completed" ? (
+
+              {/* Heatmap — switches based on metric toggle */}
+              <InfluenceHeatmap
+                data={metric === "tracin" ? heatmapData : (datainfHeatmapData ?? heatmapData)}
+                title={metric === "tracin" ? "TracIn Influence" : "DataInf Influence"}
+              />
+
+              {/* Bar Chart */}
+              {categoryAggregates.length > 0 && (
+                <AggregatedBarChart
+                  data={categoryAggregates}
+                  metric={metric}
+                />
+              )}
+
+              {/* Leaderboard */}
+              {categoryAggregates.length > 0 && (
+                <Leaderboard
+                  data={categoryAggregates}
+                  metric={metric}
+                  onSelectCategory={setSelectedCategory}
+                />
+              )}
+            </div>
+          ) : job.status === "completed" ? (
+            <div className="card-elevated rounded-xl border border-border bg-white p-5">
+              <h2 className="text-sm font-semibold text-foreground mb-4">
+                Influence Scores
+              </h2>
               <div className="flex items-center justify-center py-12">
                 <p className="text-sm text-muted-foreground">
                   No influence scores available yet.
                 </p>
               </div>
-            ) : (
+            </div>
+          ) : (
+            <div className="card-elevated rounded-xl border border-border bg-white p-5">
+              <h2 className="text-sm font-semibold text-foreground mb-4">
+                Influence Scores
+              </h2>
               <div className="flex items-center justify-center py-12">
                 <p className="text-sm text-muted-foreground">
                   Influence scores will be available once the run reaches the
@@ -387,8 +471,8 @@ export default function RunDetailPage() {
                   <span className="font-mono">{job.status}</span>
                 </p>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </motion.div>
       </div>
     </div>

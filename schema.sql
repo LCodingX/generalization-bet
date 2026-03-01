@@ -22,6 +22,7 @@ create table public.jobs (
     hyperparameters jsonb not null default '{}',
     dataset_storage_path text,
     modal_call_id text,
+    telemetry jsonb not null default '[]',
     started_at timestamptz,
     completed_at timestamptz,
     created_at timestamptz not null default now(),

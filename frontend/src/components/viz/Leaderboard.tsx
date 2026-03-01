@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { CategoryAggregate } from "@/lib/types";
 import { getCategoryColor } from "@/lib/colors";
 
@@ -12,11 +12,9 @@ interface LeaderboardProps {
 
 export function Leaderboard({
   data,
-  metric: initialMetric,
+  metric,
   onSelectCategory,
 }: LeaderboardProps) {
-  const [metric, setMetric] = useState<"tracin" | "datainf">(initialMetric);
-
   const sorted = useMemo(() => {
     const key = metric === "tracin" ? "tracin_total" : "datainf_total";
     return [...data].sort((a, b) => Math.abs(b[key]) - Math.abs(a[key]));
@@ -36,32 +34,6 @@ export function Leaderboard({
       <h3 className="text-sm font-semibold text-card-foreground mb-4 font-sans">
         Most Influential Categories
       </h3>
-
-      {/* Metric toggle */}
-      <div className="flex gap-1 mb-4 rounded-lg bg-muted p-1 w-fit">
-        <button
-          type="button"
-          className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors font-sans ${
-            metric === "tracin"
-              ? "bg-card text-card-foreground shadow-sm"
-              : "text-muted-foreground hover:text-card-foreground"
-          }`}
-          onClick={() => setMetric("tracin")}
-        >
-          by TracIn
-        </button>
-        <button
-          type="button"
-          className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors font-sans ${
-            metric === "datainf"
-              ? "bg-card text-card-foreground shadow-sm"
-              : "text-muted-foreground hover:text-card-foreground"
-          }`}
-          onClick={() => setMetric("datainf")}
-        >
-          by DataInf
-        </button>
-      </div>
 
       {/* Table header */}
       <div className="grid grid-cols-[32px_16px_1fr_80px_80px] gap-x-3 items-center px-3 pb-2 border-b border-border">

@@ -119,10 +119,16 @@ def train_and_compute_influence(
 
         webhook.send("provisioning", 0.05, f"Loaded {len(raw_training)} training, {len(eval_examples)} eval examples")
 
+        # ---- Create Supabase client early (needed for telemetry during training) ----
+        sb_client = get_client(supabase_url, supabase_service_key)
+
+        # Extract per-example categories for telemetry grouping
+        categories = [ex.get("category", "default") for ex in raw_training]
+
         # ---- Training + TracIn ----
         webhook.send("training", 0.05, "Starting fine-tuning")
 
-        tracin_scores = run_training_loop(
+        tracin_scores, telemetry = run_training_loop(
             model=model,
             tokenizer=tokenizer,
             train_loader=train_loader,
@@ -131,6 +137,9 @@ def train_and_compute_influence(
             config=job_config,
             device=device,
             webhook=webhook,
+            categories=categories,
+            supabase_client=sb_client,
+            job_id=job_id,
         )
 
         # ---- DataInf ----
@@ -148,7 +157,6 @@ def train_and_compute_influence(
         # ---- Write scores to Supabase ----
         webhook.send("computing_datainf", 0.95, "Writing scores to database")
 
-        sb_client = get_client(supabase_url, supabase_service_key)
         train_uuid_map = fetch_training_example_uuids(sb_client, job_id)
         eval_uuid_map = fetch_eval_example_uuids(sb_client, job_id)
 

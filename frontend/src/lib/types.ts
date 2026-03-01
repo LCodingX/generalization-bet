@@ -11,6 +11,15 @@ export type JobStatus =
   | "completed"
   | "failed";
 
+export interface TelemetryEntry {
+  step: number;
+  epoch: number;
+  global_grad_norm: number;
+  partition_grad_norms: Record<string, number>;
+  global_lcs: number | null;
+  partition_lcs: Record<string, number>;
+}
+
 export interface Job {
   id: string;
   status: JobStatus;
@@ -18,6 +27,7 @@ export interface Job {
   progress: number;
   model_name: string;
   hyperparameters: Hyperparameters;
+  telemetry: TelemetryEntry[];
   created_at: string;
   started_at: string | null;
   completed_at: string | null;
@@ -42,7 +52,7 @@ export const DEFAULT_HYPERPARAMETERS: Hyperparameters = {
   lora_rank: 8,
   lora_alpha: 16,
   lora_dropout: 0.05,
-  checkpoint_interval: 10,
+  checkpoint_interval: 1,
   max_seq_length: 512,
   datainf_damping: 0.01,
 };

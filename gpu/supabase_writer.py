@@ -8,6 +8,12 @@ logger = logging.getLogger(__name__)
 BATCH_SIZE = 500
 
 
+def write_telemetry(client: Client, job_id: str, telemetry: list[dict]) -> None:
+    """Write the full telemetry array to the jobs.telemetry column."""
+    client.table("jobs").update({"telemetry": telemetry}).eq("id", job_id).execute()
+    logger.info(f"Wrote {len(telemetry)} telemetry entries for job {job_id}")
+
+
 def get_client(supabase_url: str, supabase_service_key: str) -> Client:
     """Create a Supabase client with the service role key (bypasses RLS)."""
     return create_client(supabase_url, supabase_service_key)
