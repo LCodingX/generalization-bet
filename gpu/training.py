@@ -4,7 +4,12 @@ import numpy as np
 import torch
 
 from config import JobConfig
-from gradient_utils import extract_lora_parameter_vector, get_lora_parameter_names
+from gradient_utils import (
+    compute_per_example_loss,
+    extract_lora_gradient_vector,
+    extract_lora_parameter_vector,
+    get_lora_parameter_names,
+)
 from tracin import compute_tracin_at_checkpoint
 from webhook import WebhookClient
 
@@ -213,16 +218,28 @@ def run_training_loop(
         if global_step % config.checkpoint_interval != 0:
             _snapshot_params()
 
-            # Compute per-example gradient norms for telemetry
-            checkpoint_scores, checkpoint_norms = compute_tracin_at_checkpoint(
-                model=model,
-                training_data=training_data,
-                eval_tokens=eval_tokens,
-                learning_rate=config.learning_rate,
-                device=device,
-            )
-            tracin_scores += checkpoint_scores
-            _record_telemetry(global_step, epoch + 1, checkpoint_norms)
+            # Lightweight: compute only per-example gradient norms (no TracIn dot products)
+            param_names = get_lora_parameter_names(model)
+            epoch_norms = np.zeros(n_train, dtype=np.float32)
+            for i in range(n_train):
+                model.zero_grad()
+                compute_per_example_loss(model, training_data[i], device)
+                grad_vec = extract_lora_gradient_vector(model, param_names)
+                epoch_norms[i] = torch.linalg.norm(grad_vec).item()
+
+            _record_telemetry(global_step, epoch + 1, epoch_norms)
+
+    # Final TracIn checkpoint if no checkpoint fired during training
+    if global_step % config.checkpoint_interval != 0:
+        logger.info(f"Final TracIn checkpoint at step {global_step}")
+        checkpoint_scores, _ = compute_tracin_at_checkpoint(
+            model=model,
+            training_data=training_data,
+            eval_tokens=eval_tokens,
+            learning_rate=config.learning_rate,
+            device=device,
+        )
+        tracin_scores += checkpoint_scores
 
     if webhook:
         webhook.send("computing_tracin", 0.65, "Training complete, TracIn scores accumulated")
