@@ -12,118 +12,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RunCard } from "@/components/runs/RunCard";
 
 // ---------------------------------------------------------------------------
-// Mock data
-// ---------------------------------------------------------------------------
-
-const MOCK_JOBS: Job[] = [
-  {
-    id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    status: "training",
-    status_message: "Epoch 2/3 — loss 0.342",
-    progress: 0.62,
-    model_name: "meta-llama/Llama-2-7b-hf",
-    hyperparameters: {
-      learning_rate: 2e-4,
-      epochs: 3,
-      batch_size: 4,
-      lora_rank: 16,
-      lora_alpha: 32,
-      lora_dropout: 0.05,
-      checkpoint_interval: 50,
-      max_seq_length: 512,
-      datainf_damping: 0.1,
-    },
-    created_at: "2026-02-28T14:30:00Z",
-    started_at: "2026-02-28T14:32:00Z",
-    completed_at: null,
-  },
-  {
-    id: "b2c3d4e5-f6a7-8901-bcde-f12345678901",
-    status: "computing_tracin",
-    status_message: "Computing TracIn scores — checkpoint 3/5",
-    progress: 0.45,
-    model_name: "mistralai/Mistral-7B-v0.1",
-    hyperparameters: {
-      learning_rate: 1e-4,
-      epochs: 5,
-      batch_size: 8,
-      lora_rank: 32,
-      lora_alpha: 64,
-      lora_dropout: 0.1,
-      checkpoint_interval: 100,
-      max_seq_length: 1024,
-      datainf_damping: 0.05,
-    },
-    created_at: "2026-02-27T09:15:00Z",
-    started_at: "2026-02-27T09:20:00Z",
-    completed_at: null,
-  },
-  {
-    id: "c3d4e5f6-a7b8-9012-cdef-123456789012",
-    status: "completed",
-    status_message: "Run finished successfully",
-    progress: 1.0,
-    model_name: "meta-llama/Llama-2-13b-hf",
-    hyperparameters: {
-      learning_rate: 2e-4,
-      epochs: 3,
-      batch_size: 4,
-      lora_rank: 16,
-      lora_alpha: 32,
-      lora_dropout: 0.05,
-      checkpoint_interval: 50,
-      max_seq_length: 512,
-      datainf_damping: 0.1,
-    },
-    created_at: "2026-02-25T11:00:00Z",
-    started_at: "2026-02-25T11:05:00Z",
-    completed_at: "2026-02-25T18:42:00Z",
-  },
-  {
-    id: "d4e5f6a7-b8c9-0123-defa-234567890123",
-    status: "failed",
-    status_message: "OOM error during training at step 412",
-    progress: 0.33,
-    model_name: "meta-llama/Llama-2-7b-hf",
-    hyperparameters: {
-      learning_rate: 5e-4,
-      epochs: 5,
-      batch_size: 16,
-      lora_rank: 64,
-      lora_alpha: 128,
-      lora_dropout: 0.1,
-      checkpoint_interval: 25,
-      max_seq_length: 2048,
-      datainf_damping: 0.1,
-    },
-    created_at: "2026-02-24T16:00:00Z",
-    started_at: "2026-02-24T16:02:00Z",
-    completed_at: "2026-02-24T17:15:00Z",
-  },
-  {
-    id: "e5f6a7b8-c9d0-1234-efab-345678901234",
-    status: "queued",
-    status_message: null,
-    progress: 0,
-    model_name: "microsoft/phi-2",
-    hyperparameters: {
-      learning_rate: 3e-4,
-      epochs: 2,
-      batch_size: 4,
-      lora_rank: 8,
-      lora_alpha: 16,
-      lora_dropout: 0.05,
-      checkpoint_interval: 50,
-      max_seq_length: 512,
-      datainf_damping: 0.1,
-    },
-    created_at: "2026-03-01T08:00:00Z",
-    started_at: null,
-    completed_at: null,
-  },
-];
-
-// ---------------------------------------------------------------------------
 // Status helpers
 // ---------------------------------------------------------------------------
 
@@ -157,7 +45,8 @@ export default function RunsPage() {
   const router = useRouter();
   const [tab, setTab] = useState("active");
 
-  const filtered = filterJobs(MOCK_JOBS, tab);
+  const jobs: Job[] = [];
+  const filtered = filterJobs(jobs, tab);
 
   return (
     <div className="min-h-screen bg-background px-8 py-8">

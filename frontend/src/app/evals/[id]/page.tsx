@@ -11,38 +11,6 @@ import { Separator } from "@/components/ui/separator";
 import type { EvalExample } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
-// Mock data
-// ---------------------------------------------------------------------------
-
-const MOCK_EXAMPLES: EvalExample[] = [
-  {
-    question: "Explain the chain rule in calculus and provide an example.",
-    completion:
-      "The chain rule states that the derivative of f(g(x)) is f'(g(x)) * g'(x). For example, if h(x) = sin(x^2), then h'(x) = cos(x^2) * 2x.",
-  },
-  {
-    question: "What is the difference between supervised and unsupervised learning?",
-    completion:
-      "Supervised learning uses labeled data to learn a mapping from inputs to outputs. Unsupervised learning discovers patterns in unlabeled data, such as clustering or dimensionality reduction.",
-  },
-  {
-    question: "Describe how attention mechanisms work in transformers.",
-    completion:
-      "Attention computes a weighted sum of value vectors, where weights are determined by the compatibility (dot product) between query and key vectors, scaled and passed through softmax.",
-  },
-  {
-    question: "What is LoRA and why is it useful for fine-tuning?",
-    completion:
-      "LoRA (Low-Rank Adaptation) freezes the pretrained model weights and injects trainable low-rank decomposition matrices into each layer, dramatically reducing the number of trainable parameters while maintaining performance.",
-  },
-];
-
-const EVAL_SET_META: Record<string, string> = {
-  "ev-1": "Generalization Questions v1",
-  "ev-2": "Safety Probes - Batch 3",
-};
-
-// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -50,9 +18,9 @@ export default function EvalSetDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
 
-  const evalSetName = EVAL_SET_META[params.id] ?? `Eval Set ${params.id}`;
+  const evalSetName = `Eval Set ${params.id}`;
 
-  const [examples, setExamples] = useState<EvalExample[]>(MOCK_EXAMPLES);
+  const [examples, setExamples] = useState<EvalExample[]>([]);
 
   function updateExample(
     index: number,

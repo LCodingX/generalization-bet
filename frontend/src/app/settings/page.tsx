@@ -31,8 +31,8 @@ export default function SettingsPage() {
   const [defaultCheckpointInterval, setDefaultCheckpointInterval] =
     useState(50);
 
-  // Mock account
-  const mockEmail = "researcher@university.edu";
+  // TODO: fetch from Supabase auth
+  const userEmail = "";
 
   return (
     <div className="min-h-screen bg-background px-8 py-10">
@@ -206,7 +206,7 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    {mockEmail}
+                    {userEmail || "Not signed in"}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Signed in via SSO

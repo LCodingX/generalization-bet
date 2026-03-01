@@ -27,26 +27,8 @@ import {
 import { getCategoryColor } from "@/lib/colors";
 import type { TrainingPair } from "@/lib/types";
 
-// ---------------------------------------------------------------------------
-// Mock data
-// ---------------------------------------------------------------------------
-
-const MOCK_ROWS: TrainingPair[] = [
-  { prompt: "Solve for x: 2x + 3 = 7", completion: "x = 2", category: "algebra" },
-  { prompt: "What is the derivative of sin(x)?", completion: "cos(x)", category: "calculus" },
-  { prompt: "Find the area of a triangle with base 6 and height 4", completion: "12", category: "geometry" },
-  { prompt: "Simplify: (3x^2)(2x^3)", completion: "6x^5", category: "algebra" },
-  { prompt: "Evaluate the integral of 1/x dx", completion: "ln|x| + C", category: "calculus" },
-  { prompt: "What is the Pythagorean theorem?", completion: "a^2 + b^2 = c^2", category: "geometry" },
-];
-
-const ALL_CATEGORIES = ["algebra", "calculus", "geometry", "trigonometry", "statistics"];
-
-const DATASET_META: Record<string, string> = {
-  "ds-1": "MMLU Math Subset",
-  "ds-2": "Code Generation v2",
-  "ds-3": "Clinical QA Pairs",
-};
+// TODO: Fetch dataset rows and metadata from the API
+const ALL_CATEGORIES: string[] = [];
 
 // ---------------------------------------------------------------------------
 // Component
@@ -57,9 +39,9 @@ export default function DatasetDetailPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const datasetName = DATASET_META[params.id] ?? `Dataset ${params.id}`;
+  const datasetName = `Dataset ${params.id}`;
 
-  const [rows, setRows] = useState<TrainingPair[]>(MOCK_ROWS);
+  const [rows, setRows] = useState<TrainingPair[]>([]);
   const [editing, setEditing] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [bulkCategory, setBulkCategory] = useState<string>("");
@@ -67,7 +49,7 @@ export default function DatasetDetailPage() {
 
   // Pagination (display-only)
   const [page] = useState(1);
-  const totalPages = 3;
+  const totalPages = 1;
 
   // ---- Row editing helpers ------------------------------------------------
 

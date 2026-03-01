@@ -21,42 +21,6 @@ import {
 import { getCategoryColor } from "@/lib/colors";
 import type { Dataset } from "@/lib/types";
 
-// ---------------------------------------------------------------------------
-// Mock data
-// ---------------------------------------------------------------------------
-
-const MOCK_DATASETS: Dataset[] = [
-  {
-    id: "ds-1",
-    name: "MMLU Math Subset",
-    examples: [
-      { prompt: "Solve for x: 2x + 3 = 7", completion: "x = 2", category: "algebra" },
-      { prompt: "What is the derivative of x^2?", completion: "2x", category: "calculus" },
-      { prompt: "Find the area of a circle with r=5", completion: "25pi", category: "geometry" },
-      { prompt: "Simplify: (x+1)(x-1)", completion: "x^2 - 1", category: "algebra" },
-    ],
-    created_at: "2026-02-15T10:30:00Z",
-  },
-  {
-    id: "ds-2",
-    name: "Code Generation v2",
-    examples: [
-      { prompt: "Write a Python function to reverse a string", completion: "def reverse(s): return s[::-1]", category: "python" },
-      { prompt: "Implement binary search in JavaScript", completion: "function binarySearch(arr, target) { ... }", category: "javascript" },
-      { prompt: "Write a SQL query to find duplicates", completion: "SELECT col, COUNT(*) FROM t GROUP BY col HAVING COUNT(*) > 1", category: "sql" },
-    ],
-    created_at: "2026-02-20T14:00:00Z",
-  },
-  {
-    id: "ds-3",
-    name: "Clinical QA Pairs",
-    examples: [
-      { prompt: "What are the symptoms of type 2 diabetes?", completion: "Common symptoms include increased thirst, frequent urination, and fatigue.", category: "endocrine" },
-      { prompt: "Describe the mechanism of action of metformin.", completion: "Metformin decreases hepatic glucose production and increases insulin sensitivity.", category: "pharmacology" },
-    ],
-    created_at: "2026-02-25T09:15:00Z",
-  },
-];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -79,7 +43,7 @@ function formatDate(iso: string): string {
 // ---------------------------------------------------------------------------
 
 export default function DatasetsPage() {
-  const [datasets, setDatasets] = useState<Dataset[]>(MOCK_DATASETS);
+  const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [newName, setNewName] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
 

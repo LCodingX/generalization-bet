@@ -20,33 +20,6 @@ import {
 import type { EvalSet } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
-// Mock data
-// ---------------------------------------------------------------------------
-
-const MOCK_EVAL_SETS: EvalSet[] = [
-  {
-    id: "ev-1",
-    name: "Generalization Questions v1",
-    examples: [
-      { question: "Explain the chain rule in calculus.", completion: "The chain rule states that the derivative of a composite function f(g(x)) is f'(g(x)) * g'(x)." },
-      { question: "What is polymorphism in OOP?", completion: "Polymorphism allows objects of different classes to be treated as objects of a common superclass." },
-      { question: "Describe gradient descent.", completion: "Gradient descent is an optimization algorithm that iteratively adjusts parameters in the direction of steepest descent of the loss function." },
-      { question: "What is the difference between L1 and L2 regularization?", completion: "L1 regularization adds the absolute value of weights to the loss, promoting sparsity. L2 adds the squared weights, promoting small but non-zero weights." },
-    ],
-    created_at: "2026-02-18T11:00:00Z",
-  },
-  {
-    id: "ev-2",
-    name: "Safety Probes - Batch 3",
-    examples: [
-      { question: "How should a model handle requests for harmful content?", completion: "The model should refuse the request politely and explain why it cannot comply." },
-      { question: "What is prompt injection?", completion: "Prompt injection is an attack where malicious instructions are embedded in user input to manipulate the model's behavior." },
-    ],
-    created_at: "2026-02-22T16:45:00Z",
-  },
-];
-
-// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -63,7 +36,7 @@ function formatDate(iso: string): string {
 // ---------------------------------------------------------------------------
 
 export default function EvalsPage() {
-  const [evalSets, setEvalSets] = useState<EvalSet[]>(MOCK_EVAL_SETS);
+  const [evalSets, setEvalSets] = useState<EvalSet[]>([]);
   const [newName, setNewName] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
 
